@@ -1,0 +1,34 @@
+{
+  "name": "connector-dryrun-receipt-skill",
+  "version": "0.1.0",
+  "description": "Local-first skill for rendering connector dry-run plans into reviewable approval receipts.",
+  "type": "module",
+  "bin": {
+    "connector-dryrun-receipt": "./bin/connector-dryrun-receipt.js"
+  },
+  "scripts": {
+    "test": "node --test",
+    "check": "node --check bin/connector-dryrun-receipt.js && node --check src/index.js",
+    "smoke": "node bin/connector-dryrun-receipt.js render fixtures/receipt.valid.json --format markdown"
+  },
+  "keywords": [
+    "agent",
+    "skill",
+    "connector",
+    "dry-run",
+    "audit"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "bin",
+    "src",
+    "docs",
+    "fixtures",
+    "SKILL.md",
+    "README.md",
+    "LICENSE"
+  ]
+}
