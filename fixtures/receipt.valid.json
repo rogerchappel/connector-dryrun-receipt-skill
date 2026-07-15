@@ -1,0 +1,30 @@
+{
+  "id": "crm-note-42",
+  "connector": "crm",
+  "action": "create-note",
+  "target": "account/acme",
+  "approvalMode": "explicit-before-write",
+  "changes": [
+    {
+      "operation": "create",
+      "record": "note",
+      "risk": "medium",
+      "summary": "Add follow-up summary to Acme account"
+    },
+    {
+      "operation": "link",
+      "record": "contact/jordan",
+      "risk": "low",
+      "summary": "Attach note to primary contact"
+    }
+  ],
+  "approvals": [
+    "Confirm account target",
+    "Confirm note text excludes private credentials",
+    "Confirm connector write permission"
+  ],
+  "rollback": [
+    "Delete note crm-note-42 if user rejects",
+    "Leave contact untouched if note creation fails"
+  ]
+}
