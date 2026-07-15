@@ -2,10 +2,10 @@
 
 ## Verification
 
-- [ ] npm run check
-- [ ] npm test
-- [ ] npm run smoke
-- [ ] bash scripts/validate.sh
+- [x] npm run check
+- [x] npm test
+- [x] npm run smoke
+- [x] bash scripts/validate.sh
 
 ## Notes
 
