@@ -30,5 +30,13 @@
     "SKILL.md",
     "README.md",
     "LICENSE"
-  ]
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/rogerchappel/connector-dryrun-receipt-skill.git"
+  },
+  "bugs": {
+    "url": "https://github.com/rogerchappel/connector-dryrun-receipt-skill/issues"
+  },
+  "homepage": "https://github.com/rogerchappel/connector-dryrun-receipt-skill#readme"
 }
