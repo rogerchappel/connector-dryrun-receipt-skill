@@ -1,0 +1,13 @@
+{
+  "id": "bad",
+  "connector": "slack",
+  "action": "",
+  "target": "channel/C1",
+  "approvalMode": "auto",
+  "changes": [
+    {
+      "operation": "post",
+      "summary": "token=sk-examplebadsecret12345"
+    }
+  ]
+}
