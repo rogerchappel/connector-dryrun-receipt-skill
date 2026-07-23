@@ -25,6 +25,10 @@ node bin/connector-dryrun-receipt.js validate fixtures/receipt.valid.json
 node bin/connector-dryrun-receipt.js render fixtures/receipt.valid.json --format markdown
 ```
 
+Invalid shapes are safe to inspect: `validate` prints JSON findings and exits 1,
+while `render` emits a failed receipt containing paths such as `$` or
+`changes[0]`. Neither command should expose a raw JavaScript `TypeError`.
+
 ## Validation workflow
 
 1. Run `npm run check`.

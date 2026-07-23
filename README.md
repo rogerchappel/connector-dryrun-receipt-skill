@@ -11,6 +11,11 @@ node bin/connector-dryrun-receipt.js validate fixtures/receipt.valid.json
 node bin/connector-dryrun-receipt.js render fixtures/receipt.valid.json --format json
 ```
 
+`validate` prints deterministic JSON findings and exits with status 1 for an invalid
+plan, including a non-object root or non-object `changes[]` entry. `render` still
+produces a reviewable receipt for those inputs, with `Validation: fail` and the
+field path in its findings instead of exposing a raw JavaScript error.
+
 ## What it does
 
 - Validates a local JSON fixture before an agent uses it in a handoff or approval flow.
