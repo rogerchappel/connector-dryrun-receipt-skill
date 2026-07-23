@@ -69,16 +69,20 @@ test("CLI validate exits successfully for valid fixture", () => {
 });
 
 test("CLI commands handle invalid root and change shapes without raw type errors", () => {
-  for (const [command, input] of [
-    ["validate", "null"],
-    ["render", JSON.stringify({ ...valid, changes: [null, 7] })]
+  for (const [command, input, finding] of [
+    ["validate", "null", "$ must be an object"],
+    ["validate", "42", "$ must be an object"],
+    ["validate", JSON.stringify({ ...valid, changes: [null, 7] }), "changes[0] must be an object"],
+    ["render", "null", "$ must be an object"],
+    ["render", "42", "$ must be an object"],
+    ["render", JSON.stringify({ ...valid, changes: [null, 7] }), "changes[0] must be an object"]
   ]) {
     const args = ["bin/connector-dryrun-receipt.js", command, "-", ...(command === "render" ? ["--format", "markdown"] : [])];
     const result = spawnSync("node", args, { cwd: projectRoot, encoding: "utf8", input });
 
     assert.equal(result.stderr, "");
     assert.doesNotMatch(`${result.stdout}\n${result.stderr}`, /TypeError/);
-    assert.match(result.stdout, command === "validate" ? /\$ must be an object/ : /changes\[0\] must be an object/);
+    assert.ok(result.stdout.includes(finding));
     assert.equal(result.status, command === "validate" ? 1 : 0);
   }
 });
