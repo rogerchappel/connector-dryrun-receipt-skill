@@ -18,9 +18,16 @@ export function readPlan(filePath) {
 export function validatePlan(plan) {
   const errors = [];
   const warnings = [];
+  if (!isObject(plan)) {
+    return { ok: false, errors: ["$ must be an object."], warnings };
+  }
   for (const field of REQUIRED_FIELDS) if (!isNonEmptyString(plan[field])) errors.push(`Missing required string field: ${field}`);
   if (!Array.isArray(plan.changes) || plan.changes.length === 0) errors.push("At least one simulated change is required.");
-  for (const [index, change] of (plan.changes || []).entries()) {
+  for (const [index, change] of (Array.isArray(plan.changes) ? plan.changes : []).entries()) {
+    if (!isObject(change)) {
+      errors.push(`changes[${index}] must be an object.`);
+      continue;
+    }
     if (!isNonEmptyString(change.operation) || !isNonEmptyString(change.record)) errors.push(`change ${index + 1} requires operation and record.`);
     if (change.risk && !RISK_ORDER.includes(change.risk)) warnings.push(`change ${index + 1} risk should be low, medium, or high.`);
   }
@@ -32,18 +39,20 @@ export function validatePlan(plan) {
 
 export function buildReceipt(plan) {
   const validation = validatePlan(plan);
-  const risks = (plan.changes || []).map((change) => change.risk || "medium");
+  const source = isObject(plan) ? plan : {};
+  const changes = Array.isArray(source.changes) ? source.changes : [];
+  const risks = changes.map((change) => isObject(change) ? change.risk || "medium" : "medium");
   const highestRisk = risks.includes("high") ? "high" : risks.includes("medium") ? "medium" : "low";
   return {
-    id: plan.id,
-    connector: plan.connector,
-    action: plan.action,
-    target: plan.target,
-    approvalMode: plan.approvalMode,
+    id: source.id,
+    connector: source.connector,
+    action: source.action,
+    target: source.target,
+    approvalMode: source.approvalMode,
     highestRisk,
-    changes: plan.changes || [],
-    approvals: plan.approvals || [],
-    rollback: plan.rollback || [],
+    changes,
+    approvals: Array.isArray(source.approvals) ? source.approvals : [],
+    rollback: Array.isArray(source.rollback) ? source.rollback : [],
     validation
   };
 }
@@ -53,7 +62,8 @@ export function renderMarkdown(plan) {
   const lines = [`# Connector Dry-Run Receipt: ${receipt.id || "missing id"}`, "", `- Connector: ${receipt.connector || "missing"}`, `- Action: ${receipt.action || "missing"}`, `- Target: ${receipt.target || "missing"}`, `- Approval mode: ${receipt.approvalMode || "missing"}`, `- Highest risk: ${receipt.highestRisk}`, `- Validation: ${receipt.validation.ok ? "pass" : "fail"}`, "", "## Simulated Changes", ""];
   if (!receipt.changes.length) lines.push("- none recorded");
   for (const change of receipt.changes) {
-    lines.push(`- ${change.operation || "missing operation"} ${change.record || "missing record"} (${change.risk || "medium"}): ${change.summary || "no summary"}`);
+    const entry = isObject(change) ? change : {};
+    lines.push(`- ${entry.operation || "missing operation"} ${entry.record || "missing record"} (${entry.risk || "medium"}): ${entry.summary || "no summary"}`);
   }
   lines.push("", "## Approval Checklist", "");
   if (!receipt.approvals.length) lines.push("- none recorded");
@@ -79,4 +89,8 @@ function findSecretLikeValues(value, path = "$") {
 
 function isNonEmptyString(value) {
   return typeof value === "string" && value.trim().length > 0;
+}
+
+function isObject(value) {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
