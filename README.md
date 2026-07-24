@@ -25,9 +25,20 @@ field path in its findings instead of exposing a raw JavaScript error.
 
 ## Library API
 
-```js
-import { renderMarkdown } from "connector-dryrun-receipt-skill";
+The package root is an ESM entry point exporting `readPlan`, `validatePlan`,
+`buildReceipt`, and `renderMarkdown`.
 
+```js
+import {
+  buildReceipt,
+  readPlan,
+  renderMarkdown,
+  validatePlan
+} from "connector-dryrun-receipt-skill";
+
+const input = readPlan("fixtures/receipt.valid.json");
+const validation = validatePlan(input);
+const receipt = buildReceipt(input);
 const markdown = renderMarkdown(input);
 ```
 
