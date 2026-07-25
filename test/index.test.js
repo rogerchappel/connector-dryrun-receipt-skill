@@ -32,6 +32,48 @@ test("normalizer exposes validation and structured output", () => {
   assert.ok(Object.keys(output).length > 2);
 });
 
+test("unknown and missing risks fail validation and normalize conservatively", () => {
+  for (const risk of ["critical", undefined]) {
+    const change = { ...valid.changes[0] };
+    if (risk === undefined) delete change.risk;
+    else change.risk = risk;
+    const plan = { ...valid, changes: [change] };
+
+    const validation = validatePlan(plan);
+    assert.equal(validation.ok, false);
+    assert.deepEqual(validation.errors, ["changes[0].risk must be low, medium, or high."]);
+
+    const receipt = buildReceipt(plan);
+    assert.equal(receipt.changes[0].risk, "high");
+    assert.equal(receipt.highestRisk, "high");
+  }
+});
+
+test("approval and rollback entries must be usable strings", () => {
+  const plan = {
+    ...valid,
+    approvals: ["approved", {}, null, "   "],
+    rollback: ["restore snapshot", 42, ""]
+  };
+  const validation = validatePlan(plan);
+
+  assert.equal(validation.ok, false);
+  assert.deepEqual(validation.errors, [
+    "approvals[1] must be a nonempty string.",
+    "approvals[2] must be a nonempty string.",
+    "approvals[3] must be a nonempty string.",
+    "rollback[1] must be a nonempty string.",
+    "rollback[2] must be a nonempty string."
+  ]);
+
+  const markdown = renderMarkdown(plan);
+  assert.match(markdown, /- approved/);
+  assert.match(markdown, /- invalid approval item/);
+  assert.match(markdown, /- invalid rollback item/);
+  assert.doesNotMatch(markdown, /\[object Object\]|- null/);
+  assert.match(markdown, /Validation: fail/);
+});
+
 test("library APIs report non-object plans without throwing", () => {
   for (const plan of [null, 42, "plan"]) {
     const validation = validatePlan(plan);
@@ -83,6 +125,35 @@ test("CLI commands handle invalid root and change shapes without raw type errors
     assert.equal(result.stderr, "");
     assert.doesNotMatch(`${result.stdout}\n${result.stderr}`, /TypeError/);
     assert.ok(result.stdout.includes(finding));
-    assert.equal(result.status, command === "validate" ? 1 : 0);
+    assert.equal(result.status, 1);
+  }
+});
+
+test("CLI render reports invalid risks in JSON and Markdown and exits unsuccessfully", () => {
+  const input = JSON.stringify({
+    ...valid,
+    changes: [{ ...valid.changes[0], risk: "critical" }]
+  });
+
+  for (const format of ["json", "markdown"]) {
+    const result = spawnSync(
+      "node",
+      ["bin/connector-dryrun-receipt.js", "render", "-", "--format", format],
+      { cwd: projectRoot, encoding: "utf8", input }
+    );
+
+    assert.equal(result.status, 1);
+    assert.equal(result.stderr, "");
+    assert.match(result.stdout, /high/);
+    assert.match(result.stdout, /changes\[0\]\.risk must be low, medium, or high/);
+    if (format === "json") {
+      const receipt = JSON.parse(result.stdout);
+      assert.equal(receipt.highestRisk, "high");
+      assert.equal(receipt.changes[0].risk, "high");
+      assert.equal(receipt.validation.ok, false);
+    } else {
+      assert.match(result.stdout, /Validation: fail/);
+      assert.match(result.stdout, /\(high\)/);
+    }
   }
 });
