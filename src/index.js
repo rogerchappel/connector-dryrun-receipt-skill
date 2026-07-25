@@ -29,10 +29,12 @@ export function validatePlan(plan) {
       continue;
     }
     if (!isNonEmptyString(change.operation) || !isNonEmptyString(change.record)) errors.push(`change ${index + 1} requires operation and record.`);
-    if (change.risk && !RISK_ORDER.includes(change.risk)) warnings.push(`change ${index + 1} risk should be low, medium, or high.`);
+    if (!RISK_ORDER.includes(change.risk)) errors.push(`changes[${index}].risk must be low, medium, or high.`);
   }
   if (!Array.isArray(plan.approvals) || plan.approvals.length === 0) warnings.push("No approval checklist items recorded.");
   if (!Array.isArray(plan.rollback) || plan.rollback.length === 0) warnings.push("No rollback notes recorded.");
+  validateStringEntries(plan.approvals, "approvals", errors);
+  validateStringEntries(plan.rollback, "rollback", errors);
   for (const finding of findSecretLikeValues(plan)) warnings.push(`Secret-looking value at ${finding.path}`);
   return { ok: errors.length === 0, errors, warnings };
 }
@@ -40,8 +42,10 @@ export function validatePlan(plan) {
 export function buildReceipt(plan) {
   const validation = validatePlan(plan);
   const source = isObject(plan) ? plan : {};
-  const changes = Array.isArray(source.changes) ? source.changes : [];
-  const risks = changes.map((change) => isObject(change) ? change.risk || "medium" : "medium");
+  const changes = (Array.isArray(source.changes) ? source.changes : []).map((change) => (
+    isObject(change) ? { ...change, risk: normalizeRisk(change.risk) } : change
+  ));
+  const risks = changes.map((change) => isObject(change) ? change.risk : "high");
   const highestRisk = risks.includes("high") ? "high" : risks.includes("medium") ? "medium" : "low";
   return {
     id: source.id,
@@ -67,10 +71,10 @@ export function renderMarkdown(plan) {
   }
   lines.push("", "## Approval Checklist", "");
   if (!receipt.approvals.length) lines.push("- none recorded");
-  for (const item of receipt.approvals) lines.push(`- ${item}`);
+  for (const item of receipt.approvals) lines.push(`- ${isNonEmptyString(item) ? item : "invalid approval item"}`);
   lines.push("", "## Rollback Notes", "");
   if (!receipt.rollback.length) lines.push("- none recorded");
-  for (const item of receipt.rollback) lines.push(`- ${item}`);
+  for (const item of receipt.rollback) lines.push(`- ${isNonEmptyString(item) ? item : "invalid rollback item"}`);
   if (receipt.validation.errors.length || receipt.validation.warnings.length) {
     lines.push("", "## Validation Findings", "");
     for (const error of receipt.validation.errors) lines.push(`- error: ${error}`);
@@ -85,6 +89,17 @@ function findSecretLikeValues(value, path = "$") {
   if (Array.isArray(value)) value.forEach((entry, index) => findings.push(...findSecretLikeValues(entry, `${path}[${index}]`)));
   else if (value && typeof value === "object") for (const [key, entry] of Object.entries(value)) findings.push(...findSecretLikeValues(entry, `${path}.${key}`));
   return findings;
+}
+
+function validateStringEntries(value, field, errors) {
+  if (!Array.isArray(value)) return;
+  for (const [index, entry] of value.entries()) {
+    if (!isNonEmptyString(entry)) errors.push(`${field}[${index}] must be a nonempty string.`);
+  }
+}
+
+function normalizeRisk(risk) {
+  return RISK_ORDER.includes(risk) ? risk : "high";
 }
 
 function isNonEmptyString(value) {

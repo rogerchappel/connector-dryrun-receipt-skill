@@ -17,10 +17,11 @@ try {
   }
   if (command === "render") {
     const format = readOption(args, "--format") || "markdown";
+    const receipt = buildReceipt(input);
     if (format === "markdown") process.stdout.write(renderMarkdown(input));
-    else if (format === "json") process.stdout.write(`${JSON.stringify(buildReceipt(input), null, 2)}\n`);
+    else if (format === "json") process.stdout.write(`${JSON.stringify(receipt, null, 2)}\n`);
     else throw new Error(`Unsupported format: ${format}`);
-    process.exit(0);
+    process.exit(receipt.validation.ok ? 0 : 1);
   }
   throw new Error(`Unknown command: ${command}`);
 } catch (error) {
