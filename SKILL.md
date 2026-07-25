@@ -27,11 +27,17 @@ node bin/connector-dryrun-receipt.js render fixtures/receipt.valid.json --format
 
 Invalid shapes are safe to inspect: `validate` prints JSON findings and exits 1,
 while `render` emits a failed receipt containing paths such as `$` or
-`changes[0]`. Neither command should expose a raw JavaScript `TypeError`.
+`changes[0]` and exits 1. Neither command should expose a raw JavaScript
+`TypeError`.
+
+Use only `low`, `medium`, or `high` for every change risk. Missing or unknown
+risks fail validation and render as `high`. Approval and rollback arrays must
+contain nonempty strings; malformed entries fail validation with indexed paths.
 
 ## Validation workflow
 
 1. Run `npm run check`.
 2. Run `npm test`.
 3. Run `npm run smoke`.
-4. Review warnings for missing approvals, missing verification, or secret-looking values.
+4. Fix errors before relying on a receipt, then review warnings for missing
+   approvals, missing verification, or secret-looking values.

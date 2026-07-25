@@ -12,9 +12,15 @@ node bin/connector-dryrun-receipt.js render fixtures/receipt.valid.json --format
 ```
 
 `validate` prints deterministic JSON findings and exits with status 1 for an invalid
-plan, including a non-object root or non-object `changes[]` entry. `render` still
-produces a reviewable receipt for those inputs, with `Validation: fail` and the
-field path in its findings instead of exposing a raw JavaScript error.
+plan. `render` still prints a reviewable receipt for invalid input, but also exits
+with status 1; inspect the output rather than treating a rendered file as a pass.
+
+Each change must declare `risk` as `low`, `medium`, or `high`. Missing or unknown
+values are validation errors and are normalized to `high` in rendered receipts so
+that `highestRisk` cannot understate uncertainty. Every `approvals[]` and
+`rollback[]` entry must be a nonempty string. Findings identify malformed entries
+by index, and Markdown uses an explicit invalid-item placeholder instead of
+stringifying objects or nulls.
 
 ## What it does
 
