@@ -110,6 +110,65 @@ test("CLI validate exits successfully for valid fixture", () => {
   assert.match(output, /"ok": true/);
 });
 
+test("CLI commands accept valid file and stdin invocations", () => {
+  for (const [command, source, extraArgs] of [
+    ["validate", "fixtures/receipt.valid.json", []],
+    ["render", "fixtures/receipt.valid.json", []],
+    ["render", "fixtures/receipt.valid.json", ["--format", "markdown"]],
+    ["render", "fixtures/receipt.valid.json", ["--format", "json"]]
+  ]) {
+    const result = spawnSync(
+      "node",
+      ["bin/connector-dryrun-receipt.js", command, source, ...extraArgs],
+      { cwd: projectRoot, encoding: "utf8" }
+    );
+
+    assert.equal(result.status, 0);
+    assert.equal(result.stderr, "");
+    assert.notEqual(result.stdout, "");
+  }
+
+  for (const command of ["validate", "render"]) {
+    const result = spawnSync(
+      "node",
+      ["bin/connector-dryrun-receipt.js", command, "-"],
+      { cwd: projectRoot, encoding: "utf8", input: JSON.stringify(valid) }
+    );
+
+    assert.equal(result.status, 0);
+    assert.equal(result.stderr, "");
+    assert.notEqual(result.stdout, "");
+  }
+});
+
+test("CLI rejects malformed command arguments with a stable usage error", () => {
+  const invalidInvocations = [
+    [],
+    ["validate"],
+    ["validate", "fixtures/receipt.valid.json", "unexpected"],
+    ["validate", "fixtures/receipt.valid.json", "--format", "json"],
+    ["render"],
+    ["render", "fixtures/receipt.valid.json", "extra"],
+    ["render", "fixtures/receipt.valid.json", "--format"],
+    ["render", "fixtures/receipt.valid.json", "--format", "yaml"],
+    ["render", "fixtures/receipt.valid.json", "--format", "json", "--format", "markdown"],
+    ["render", "fixtures/receipt.valid.json", "--bogus", "value"],
+    ["unknown", "fixtures/receipt.valid.json"]
+  ];
+
+  for (const args of invalidInvocations) {
+    const result = spawnSync(
+      "node",
+      ["bin/connector-dryrun-receipt.js", ...args],
+      { cwd: projectRoot, encoding: "utf8" }
+    );
+
+    assert.equal(result.status, 2, `expected usage failure for: ${args.join(" ")}`);
+    assert.equal(result.stdout, "");
+    assert.match(result.stderr, /^Usage error: .+\nUsage:/);
+  }
+});
+
 test("CLI commands handle invalid root and change shapes without raw type errors", () => {
   for (const [command, input, finding] of [
     ["validate", "null", "$ must be an object"],
