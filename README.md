@@ -14,6 +14,10 @@ node bin/connector-dryrun-receipt.js render fixtures/receipt.valid.json --format
 `validate` prints deterministic JSON findings and exits with status 1 for an invalid
 plan. `render` still prints a reviewable receipt for invalid input, but also exits
 with status 1; inspect the output rather than treating a rendered file as a pass.
+Both commands accept `-` to read JSON from stdin. `render` defaults to Markdown;
+its only option is one complete `--format markdown|json` pair after the file.
+Malformed invocations print a stable `Usage error:` message to stderr and exit
+with status 2, distinguishing command-line mistakes from invalid plans.
 
 Each change must declare `risk` as `low`, `medium`, or `high`. Missing or unknown
 values are validation errors and are normalized to `high` in rendered receipts so
