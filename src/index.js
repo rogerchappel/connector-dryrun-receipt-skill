@@ -28,7 +28,11 @@ export function validatePlan(plan) {
       errors.push(`changes[${index}] must be an object.`);
       continue;
     }
-    if (!isNonEmptyString(change.operation) || !isNonEmptyString(change.record)) errors.push(`change ${index + 1} requires operation and record.`);
+    if (!isNonEmptyString(change.operation)) errors.push(`changes[${index}].operation must be a nonempty string.`);
+    if (!isNonEmptyString(change.record)) errors.push(`changes[${index}].record must be a nonempty string.`);
+    if (Object.hasOwn(change, "summary") && typeof change.summary !== "string") {
+      errors.push(`changes[${index}].summary must be a string when present.`);
+    }
     if (!RISK_ORDER.includes(change.risk)) errors.push(`changes[${index}].risk must be low, medium, or high.`);
   }
   if (!Array.isArray(plan.approvals) || plan.approvals.length === 0) warnings.push("No approval checklist items recorded.");
@@ -42,9 +46,7 @@ export function validatePlan(plan) {
 export function buildReceipt(plan) {
   const validation = validatePlan(plan);
   const source = isObject(plan) ? plan : {};
-  const changes = (Array.isArray(source.changes) ? source.changes : []).map((change) => (
-    isObject(change) ? { ...change, risk: normalizeRisk(change.risk) } : change
-  ));
+  const changes = (Array.isArray(source.changes) ? source.changes : []).map(normalizeChange);
   const risks = changes.map((change) => isObject(change) ? change.risk : "high");
   const highestRisk = risks.includes("high") ? "high" : risks.includes("medium") ? "medium" : "low";
   return {
@@ -100,6 +102,17 @@ function validateStringEntries(value, field, errors) {
 
 function normalizeRisk(risk) {
   return RISK_ORDER.includes(risk) ? risk : "high";
+}
+
+function normalizeChange(change) {
+  if (!isObject(change)) return change;
+  return {
+    ...change,
+    operation: isNonEmptyString(change.operation) ? change.operation : "missing operation",
+    record: isNonEmptyString(change.record) ? change.record : "missing record",
+    risk: normalizeRisk(change.risk),
+    summary: isNonEmptyString(change.summary) ? change.summary : "no summary"
+  };
 }
 
 function isNonEmptyString(value) {
