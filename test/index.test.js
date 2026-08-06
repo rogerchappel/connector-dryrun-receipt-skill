@@ -216,3 +216,51 @@ test("CLI render reports invalid risks in JSON and Markdown and exits unsuccessf
     }
   }
 });
+
+const malformedChangeValues = [42, { text: "bad" }, ["bad"], null, "   "];
+
+test("change fields report indexed errors and normalize receipt output", () => {
+  for (const value of malformedChangeValues) {
+    const plan = { ...valid, changes: [{ operation: value, record: value, risk: "low", summary: value }] };
+    const validation = validatePlan(plan);
+    const receipt = buildReceipt(plan);
+    const markdown = renderMarkdown(plan);
+
+    assert.equal(validation.ok, false);
+    assert.ok(validation.errors.includes("changes[0].operation must be a nonempty string."));
+    assert.ok(validation.errors.includes("changes[0].record must be a nonempty string."));
+    if (typeof value === "string") assert.ok(!validation.errors.some((error) => error.includes("changes[0].summary")));
+    else assert.ok(validation.errors.includes("changes[0].summary must be a string when present."));
+    assert.deepEqual(receipt.changes[0], {
+      operation: "missing operation",
+      record: "missing record",
+      risk: "low",
+      summary: "no summary"
+    });
+    assert.doesNotMatch(JSON.stringify(receipt), /\[object Object\]/);
+    assert.doesNotMatch(markdown, /\[object Object\]/);
+    assert.match(markdown, /missing operation missing record \(low\): no summary/);
+  }
+});
+
+test("CLI rejects malformed change fields with conservative JSON and Markdown", () => {
+  for (const value of malformedChangeValues) {
+    const input = JSON.stringify({ ...valid, changes: [{ operation: value, record: value, risk: "low", summary: value }] });
+    for (const format of ["json", "markdown"]) {
+      const result = spawnSync("node", ["bin/connector-dryrun-receipt.js", "render", "-", "--format", format], {
+        cwd: projectRoot,
+        encoding: "utf8",
+        input
+      });
+
+      assert.equal(result.status, 1);
+      assert.match(result.stdout, /changes\[0\]\.operation/);
+      assert.match(result.stdout, /changes\[0\]\.record/);
+      if (typeof value !== "string") assert.match(result.stdout, /changes\[0\]\.summary/);
+      assert.doesNotMatch(result.stdout, /\[object Object\]/);
+      assert.match(result.stdout, /missing operation/);
+      assert.match(result.stdout, /missing record/);
+      assert.match(result.stdout, /no summary/);
+    }
+  }
+});
