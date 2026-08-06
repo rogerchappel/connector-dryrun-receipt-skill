@@ -52,6 +52,19 @@ const receipt = buildReceipt(input);
 const markdown = renderMarkdown(input);
 ```
 
+## Change fields
+
+Each `changes` entry must be an object with nonempty string `operation` and
+`record` fields. The optional `summary` field must be a string when present;
+an empty summary is treated the same as an omitted summary. `risk` must be one
+of `low`, `medium`, or `high`.
+
+Validation errors identify malformed fields by their zero-based path, such as
+`changes[0].operation`. Failed receipts remain safe to inspect: invalid or
+blank operations, records, and summaries render as `missing operation`,
+`missing record`, and `no summary` instead of coercing objects or arrays into
+output. Rendering still exits with status 1 until the input is corrected.
+
 ## Limitations
 
 This package is local-first. It does not fetch private chat logs, call connectors, store credentials, or approve writes. Treat output as a review aid, not as proof that an external system changed.
