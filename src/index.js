@@ -35,10 +35,8 @@ export function validatePlan(plan) {
     }
     if (!RISK_ORDER.includes(change.risk)) errors.push(`changes[${index}].risk must be low, medium, or high.`);
   }
-  if (!Array.isArray(plan.approvals) || plan.approvals.length === 0) warnings.push("No approval checklist items recorded.");
-  if (!Array.isArray(plan.rollback) || plan.rollback.length === 0) warnings.push("No rollback notes recorded.");
-  validateStringEntries(plan.approvals, "approvals", errors);
-  validateStringEntries(plan.rollback, "rollback", errors);
+  validateStringArrayField(plan, "approvals", "No approval checklist items recorded.", errors, warnings);
+  validateStringArrayField(plan, "rollback", "No rollback notes recorded.", errors, warnings);
   for (const finding of findSecretLikeValues(plan)) warnings.push(`Secret-looking value at ${finding.path}`);
   return { ok: errors.length === 0, errors, warnings };
 }
@@ -98,6 +96,19 @@ function validateStringEntries(value, field, errors) {
   for (const [index, entry] of value.entries()) {
     if (!isNonEmptyString(entry)) errors.push(`${field}[${index}] must be a nonempty string.`);
   }
+}
+
+function validateStringArrayField(plan, field, emptyWarning, errors, warnings) {
+  if (!Object.hasOwn(plan, field)) {
+    warnings.push(emptyWarning);
+    return;
+  }
+  if (!Array.isArray(plan[field])) {
+    errors.push(`${field} must be an array when present.`);
+    return;
+  }
+  if (plan[field].length === 0) warnings.push(emptyWarning);
+  validateStringEntries(plan[field], field, errors);
 }
 
 function normalizeRisk(risk) {
