@@ -21,10 +21,13 @@ with status 2, distinguishing command-line mistakes from invalid plans.
 
 Each change must declare `risk` as `low`, `medium`, or `high`. Missing or unknown
 values are validation errors and are normalized to `high` in rendered receipts so
-that `highestRisk` cannot understate uncertainty. Every `approvals[]` and
-`rollback[]` entry must be a nonempty string. Findings identify malformed entries
-by index, and Markdown uses an explicit invalid-item placeholder instead of
-stringifying objects or nulls.
+that `highestRisk` cannot understate uncertainty. When present, `approvals` and
+`rollback` must be arrays, and every entry must be a nonempty string. Omitting
+either field or providing an empty array produces the existing missing-context
+warning. Findings identify malformed entries by index, and malformed containers
+produce field-specific errors. Rendered output remains inspectable: invalid
+containers become empty sections, while invalid array entries use an explicit
+placeholder instead of stringifying objects or nulls.
 
 ## What it does
 
