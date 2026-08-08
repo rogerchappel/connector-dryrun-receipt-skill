@@ -74,6 +74,42 @@ test("approval and rollback entries must be usable strings", () => {
   assert.match(markdown, /Validation: fail/);
 });
 
+test("approval and rollback containers must be arrays when present", () => {
+  for (const value of [{ reviewer: "alice" }, "approved", null, 42]) {
+    for (const field of ["approvals", "rollback"]) {
+      const plan = { ...valid, [field]: value };
+      const validation = validatePlan(plan);
+      const receipt = buildReceipt(plan);
+      const markdown = renderMarkdown(plan);
+
+      assert.equal(validation.ok, false);
+      assert.ok(validation.errors.includes(`${field} must be an array when present.`));
+      assert.deepEqual(receipt[field], []);
+      assert.match(markdown, /Validation: fail/);
+      assert.match(markdown, new RegExp(`error: ${field} must be an array when present\\.`));
+      assert.match(markdown, field === "approvals" ? /## Approval Checklist\n\n- none recorded/ : /## Rollback Notes\n\n- none recorded/);
+      assert.doesNotMatch(markdown, /\[object Object\]/);
+    }
+  }
+});
+
+test("omitted and empty approval and rollback arrays retain warnings", () => {
+  for (const field of ["approvals", "rollback"]) {
+    for (const mode of ["omitted", "empty"]) {
+      const plan = { ...valid };
+      if (mode === "omitted") delete plan[field];
+      else plan[field] = [];
+      const validation = validatePlan(plan);
+
+      assert.equal(validation.ok, true);
+      assert.deepEqual(validation.errors, []);
+      assert.ok(validation.warnings.includes(field === "approvals"
+        ? "No approval checklist items recorded."
+        : "No rollback notes recorded."));
+    }
+  }
+});
+
 test("library APIs report non-object plans without throwing", () => {
   for (const plan of [null, 42, "plan"]) {
     const validation = validatePlan(plan);
@@ -213,6 +249,31 @@ test("CLI render reports invalid risks in JSON and Markdown and exits unsuccessf
     } else {
       assert.match(result.stdout, /Validation: fail/);
       assert.match(result.stdout, /\(high\)/);
+    }
+  }
+});
+
+test("CLI validate and render reject malformed approval and rollback containers", () => {
+  for (const value of [{ reviewer: "alice" }, "approved", null, 42]) {
+    for (const field of ["approvals", "rollback"]) {
+      const input = JSON.stringify({ ...valid, [field]: value });
+      for (const [command, extraArgs] of [
+        ["validate", []],
+        ["render", ["--format", "json"]],
+        ["render", ["--format", "markdown"]]
+      ]) {
+        const result = spawnSync(
+          "node",
+          ["bin/connector-dryrun-receipt.js", command, "-", ...extraArgs],
+          { cwd: projectRoot, encoding: "utf8", input }
+        );
+
+        assert.equal(result.status, 1);
+        assert.equal(result.stderr, "");
+        assert.match(result.stdout, new RegExp(`${field} must be an array when present\\.`));
+        assert.doesNotMatch(result.stdout, /\[object Object\]/);
+        if (command === "render") assert.match(result.stdout, extraArgs[1] === "json" ? new RegExp(`"${field}": \\[\\]`) : /- none recorded/);
+      }
     }
   }
 });
