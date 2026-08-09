@@ -33,6 +33,10 @@ while `render` emits a failed receipt containing paths such as `$` or
 Use only `low`, `medium`, or `high` for every change risk. Missing or unknown
 risks fail validation and render as `high`. Approval and rollback arrays must
 contain nonempty strings; malformed entries fail validation with indexed paths.
+Missing, malformed, or empty change lists also report `high` as the highest risk.
+Required receipt fields must be nonempty strings; invalid values fail validation
+and render as deterministic `missing <field>` placeholders rather than being
+coerced into output.
 
 ## Validation workflow
 

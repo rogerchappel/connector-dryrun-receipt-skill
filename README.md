@@ -21,7 +21,11 @@ with status 2, distinguishing command-line mistakes from invalid plans.
 
 Each change must declare `risk` as `low`, `medium`, or `high`. Missing or unknown
 values are validation errors and are normalized to `high` in rendered receipts so
-that `highestRisk` cannot understate uncertainty. When present, `approvals` and
+that `highestRisk` cannot understate uncertainty. A missing, malformed, or empty
+`changes` list also renders `highestRisk` as `high`, never `low`. Required receipt
+fields (`id`, `connector`, `action`, `target`, and `approvalMode`) must be nonempty
+strings; invalid values retain their validation errors and render as explicit
+`missing <field>` placeholders in both structured and Markdown output. When present, `approvals` and
 `rollback` must be arrays, and every entry must be a nonempty string. Omitting
 either field or providing an empty array produces the existing missing-context
 warning. Findings identify malformed entries by index, and malformed containers
