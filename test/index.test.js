@@ -32,6 +32,38 @@ test("normalizer exposes validation and structured output", () => {
   assert.ok(Object.keys(output).length > 2);
 });
 
+test("missing or empty changes use a conservative highest risk", () => {
+  for (const changes of [undefined, null, {}, []]) {
+    const plan = { ...valid };
+    if (changes === undefined) delete plan.changes;
+    else plan.changes = changes;
+
+    const receipt = buildReceipt(plan);
+    assert.equal(receipt.validation.ok, false);
+    assert.ok(receipt.validation.errors.includes("At least one simulated change is required."));
+    assert.deepEqual(receipt.changes, []);
+    assert.equal(receipt.highestRisk, "high");
+    assert.match(renderMarkdown(plan), /Highest risk: high/);
+  }
+});
+
+test("required receipt scalars normalize to explicit placeholders", () => {
+  const malformedValues = [{ bad: true }, ["bad"], 42, true, null, "   "];
+  for (const field of ["id", "connector", "action", "target", "approvalMode"]) {
+    for (const value of malformedValues) {
+      const plan = { ...valid, [field]: value };
+      const receipt = buildReceipt(plan);
+      const markdown = renderMarkdown(plan);
+
+      assert.equal(receipt[field], `missing ${field}`);
+      assert.ok(receipt.validation.errors.includes(`Missing required string field: ${field}`));
+      assert.doesNotMatch(JSON.stringify(receipt), /\[object Object\]/);
+      assert.doesNotMatch(markdown, /\[object Object\]/);
+      assert.match(markdown, new RegExp(`missing ${field}`));
+    }
+  }
+});
+
 test("unknown and missing risks fail validation and normalize conservatively", () => {
   for (const risk of ["critical", undefined]) {
     const change = { ...valid.changes[0] };
@@ -250,6 +282,35 @@ test("CLI render reports invalid risks in JSON and Markdown and exits unsuccessf
       assert.match(result.stdout, /Validation: fail/);
       assert.match(result.stdout, /\(high\)/);
     }
+  }
+});
+
+test("CLI renders malformed required scalars and absent changes conservatively", () => {
+  const input = JSON.stringify({
+    id: { bad: true },
+    connector: ["crm"],
+    action: 42,
+    target: true,
+    approvalMode: { mode: "review" }
+  });
+
+  for (const format of ["json", "markdown"]) {
+    const result = spawnSync("node", ["bin/connector-dryrun-receipt.js", "render", "-", "--format", format], {
+      cwd: projectRoot,
+      encoding: "utf8",
+      input
+    });
+
+    assert.equal(result.status, 1);
+    assert.equal(result.stderr, "");
+    assert.doesNotMatch(result.stdout, /\[object Object\]/);
+    assert.match(result.stdout, /high/);
+    assert.match(result.stdout, /At least one simulated change is required/);
+    for (const field of ["id", "connector", "action", "target", "approvalMode"]) {
+      assert.match(result.stdout, new RegExp(`missing ${field}`));
+    }
+    if (format === "json") assert.equal(JSON.parse(result.stdout).highestRisk, "high");
+    else assert.match(result.stdout, /Highest risk: high/);
   }
 });
 

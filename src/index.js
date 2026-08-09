@@ -1,6 +1,7 @@
 import fs from "node:fs";
 
 const REQUIRED_FIELDS = ["id", "connector", "action", "target", "approvalMode"];
+const REQUIRED_FIELD_PLACEHOLDERS = Object.fromEntries(REQUIRED_FIELDS.map((field) => [field, `missing ${field}`]));
 const RISK_ORDER = ["low", "medium", "high"];
 const SECRET_PATTERNS = [/sk-[A-Za-z0-9_-]{12,}/, /gh[opsu]_[A-Za-z0-9_]{20,}/, /password\s*[:=]\s*\S+/i, /token\s*[:=]\s*\S+/i];
 
@@ -46,13 +47,12 @@ export function buildReceipt(plan) {
   const source = isObject(plan) ? plan : {};
   const changes = (Array.isArray(source.changes) ? source.changes : []).map(normalizeChange);
   const risks = changes.map((change) => isObject(change) ? change.risk : "high");
-  const highestRisk = risks.includes("high") ? "high" : risks.includes("medium") ? "medium" : "low";
+  const highestRisk = risks.length === 0 || risks.includes("high") ? "high" : risks.includes("medium") ? "medium" : "low";
   return {
-    id: source.id,
-    connector: source.connector,
-    action: source.action,
-    target: source.target,
-    approvalMode: source.approvalMode,
+    ...Object.fromEntries(REQUIRED_FIELDS.map((field) => [
+      field,
+      isNonEmptyString(source[field]) ? source[field] : REQUIRED_FIELD_PLACEHOLDERS[field]
+    ])),
     highestRisk,
     changes,
     approvals: Array.isArray(source.approvals) ? source.approvals : [],
