@@ -55,8 +55,8 @@ export function buildReceipt(plan) {
     ])),
     highestRisk,
     changes,
-    approvals: Array.isArray(source.approvals) ? source.approvals : [],
-    rollback: Array.isArray(source.rollback) ? source.rollback : [],
+    approvals: normalizeStringEntries(source.approvals, "invalid approval item"),
+    rollback: normalizeStringEntries(source.rollback, "invalid rollback item"),
     validation
   };
 }
@@ -124,6 +124,11 @@ function normalizeChange(change) {
     risk: normalizeRisk(change.risk),
     summary: isNonEmptyString(change.summary) ? change.summary : "no summary"
   };
+}
+
+function normalizeStringEntries(value, placeholder) {
+  if (!Array.isArray(value)) return [];
+  return value.map((entry) => isNonEmptyString(entry) ? entry : placeholder);
 }
 
 function isNonEmptyString(value) {
