@@ -106,6 +106,40 @@ test("approval and rollback entries must be usable strings", () => {
   assert.match(markdown, /Validation: fail/);
 });
 
+test("approval and rollback entries normalize in structured receipts", () => {
+  const plan = {
+    ...valid,
+    approvals: ["approved", {}, null, 42, "   "],
+    rollback: ["restore snapshot", {}, null, 42, ""]
+  };
+  const receipt = buildReceipt(plan);
+
+  assert.deepEqual(receipt.approvals, [
+    "approved",
+    "invalid approval item",
+    "invalid approval item",
+    "invalid approval item",
+    "invalid approval item"
+  ]);
+  assert.deepEqual(receipt.rollback, [
+    "restore snapshot",
+    "invalid rollback item",
+    "invalid rollback item",
+    "invalid rollback item",
+    "invalid rollback item"
+  ]);
+  assert.deepEqual(receipt.validation.errors, [
+    "approvals[1] must be a nonempty string.",
+    "approvals[2] must be a nonempty string.",
+    "approvals[3] must be a nonempty string.",
+    "approvals[4] must be a nonempty string.",
+    "rollback[1] must be a nonempty string.",
+    "rollback[2] must be a nonempty string.",
+    "rollback[3] must be a nonempty string.",
+    "rollback[4] must be a nonempty string."
+  ]);
+});
+
 test("approval and rollback containers must be arrays when present", () => {
   for (const value of [{ reviewer: "alice" }, "approved", null, 42]) {
     for (const field of ["approvals", "rollback"]) {
@@ -337,6 +371,40 @@ test("CLI validate and render reject malformed approval and rollback containers"
       }
     }
   }
+});
+
+test("CLI JSON render normalizes malformed approval and rollback entries", () => {
+  const input = JSON.stringify({
+    ...valid,
+    approvals: ["approved", {}, null, 42, "   "],
+    rollback: ["restore snapshot", {}, null, 42, ""]
+  });
+  const result = spawnSync(
+    "node",
+    ["bin/connector-dryrun-receipt.js", "render", "-", "--format", "json"],
+    { cwd: projectRoot, encoding: "utf8", input }
+  );
+
+  assert.equal(result.status, 1);
+  assert.equal(result.stderr, "");
+  const receipt = JSON.parse(result.stdout);
+  assert.deepEqual(receipt.approvals, [
+    "approved",
+    "invalid approval item",
+    "invalid approval item",
+    "invalid approval item",
+    "invalid approval item"
+  ]);
+  assert.deepEqual(receipt.rollback, [
+    "restore snapshot",
+    "invalid rollback item",
+    "invalid rollback item",
+    "invalid rollback item",
+    "invalid rollback item"
+  ]);
+  assert.equal(receipt.validation.ok, false);
+  assert.ok(receipt.validation.errors.includes("approvals[1] must be a nonempty string."));
+  assert.ok(receipt.validation.errors.includes("rollback[4] must be a nonempty string."));
 });
 
 const malformedChangeValues = [42, { text: "bad" }, ["bad"], null, "   "];
