@@ -30,8 +30,9 @@ strings; invalid values retain their validation errors and render as explicit
 either field or providing an empty array produces the existing missing-context
 warning. Findings identify malformed entries by index, and malformed containers
 produce field-specific errors. Rendered output remains inspectable: invalid
-containers become empty sections, while invalid array entries use an explicit
-placeholder instead of stringifying objects or nulls.
+containers become empty sections, while invalid array entries become
+`invalid approval item` or `invalid rollback item` in both structured and
+Markdown receipts instead of stringifying objects or nulls.
 
 ## What it does
 
