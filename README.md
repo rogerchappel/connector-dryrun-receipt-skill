@@ -80,3 +80,10 @@ This package is local-first. It does not fetch private chat logs, call connector
 ## Safety notes
 
 Run against redacted fixtures when possible. Review validation warnings before sharing reports outside the project context.
+
+## Release verification
+
+Run `npm test`, `npm run check`, `npm run smoke`, and `npm pack --dry-run`
+before preparing a release. The package regression test also performs an npm
+publish dry run, inspects the packed `bin` metadata, installs the tarball, and
+executes `connector-dryrun-receipt` from the consumer package.

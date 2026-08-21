@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -45,6 +45,45 @@ test("packed package exposes the documented ESM API", () => {
     );
     assert.match(packagedLicense, /THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND/);
     assert.match(packagedLicense, /IN NO EVENT SHALL THE\s+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE/);
+  } finally {
+    rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
+test("publish dry-run preserves the packaged CLI metadata and installed executable", () => {
+  const workspace = mkdtempSync(join(tmpdir(), "connector-dryrun-receipt-publish-"));
+
+  try {
+    const publish = spawnSync("npm", ["publish", "--dry-run", "--json"], {
+      cwd: projectRoot,
+      encoding: "utf8"
+    });
+    assert.equal(publish.status, 0, publish.stderr);
+    assert.doesNotMatch(publish.stderr, /auto-corrected|invalid and removed/i);
+
+    const packResult = JSON.parse(execFileSync("npm", ["pack", "--json", "--pack-destination", workspace], {
+      cwd: projectRoot,
+      encoding: "utf8"
+    }));
+    const tarball = join(workspace, packResult[0].filename);
+    const packagedManifest = JSON.parse(execFileSync("tar", ["-xOzf", tarball, "package/package.json"], {
+      encoding: "utf8"
+    }));
+    assert.deepEqual(packagedManifest.bin, {
+      "connector-dryrun-receipt": "bin/connector-dryrun-receipt.js"
+    });
+
+    execFileSync("npm", ["init", "--yes"], { cwd: workspace, stdio: "ignore" });
+    execFileSync("npm", ["install", "--ignore-scripts", "--no-audit", "--no-fund", tarball], {
+      cwd: workspace,
+      stdio: "ignore"
+    });
+    const output = execFileSync(
+      join(workspace, "node_modules", ".bin", "connector-dryrun-receipt"),
+      ["validate", join(projectRoot.pathname, "fixtures", "receipt.valid.json")],
+      { cwd: workspace, encoding: "utf8" }
+    );
+    assert.match(output, /"ok": true/);
   } finally {
     rmSync(workspace, { recursive: true, force: true });
   }
