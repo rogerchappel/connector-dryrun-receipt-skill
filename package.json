@@ -8,7 +8,7 @@
     ".": "./src/index.js"
   },
   "bin": {
-    "connector-dryrun-receipt": "./bin/connector-dryrun-receipt.js"
+    "connector-dryrun-receipt": "bin/connector-dryrun-receipt.js"
   },
   "scripts": {
     "test": "node --test",
