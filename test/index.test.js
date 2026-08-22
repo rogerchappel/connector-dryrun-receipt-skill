@@ -26,6 +26,45 @@ test("markdown render includes receipt sections", () => {
   assert.match(rendered, /Validation: pass/);
 });
 
+test("markdown renders fixture-controlled values as normalized literal text", () => {
+  const plan = structuredClone(valid);
+  plan.id = "receipt\n## injected";
+  plan.connector = "[connector](https://example.test)";
+  plan.action = "`delete` *everything*";
+  plan.target = "target\r\n- nested item";
+  plan.approvalMode = "review #channel";
+  plan.changes[0] = { operation: "+ create", record: "[record]", risk: "low", summary: "first line\n\n## heading `code`" };
+  plan.approvals = ["review\n- nested item"];
+  plan.rollback = ["undo [link](https://example.test) | table"];
+
+  const rendered = renderMarkdown(plan);
+  assert.match(rendered, /^# Connector Dry-Run Receipt: receipt ## injected$/m);
+  assert.ok(rendered.includes("Connector: \\[connector\\]\\(https://example.test\\)"));
+  assert.match(rendered, /Action: \\`delete\\` \\\*everything\\\*/);
+  assert.match(rendered, /Target: target - nested item/);
+  assert.match(rendered, /first line ## heading \\`code\\`/);
+  assert.match(rendered, /- review - nested item/);
+  assert.ok(rendered.includes("undo \\[link\\]\\(https://example.test\\) \\| table"));
+  assert.doesNotMatch(rendered, /\n## injected|\n## heading|\n- nested item/);
+  assert.equal(renderMarkdown(plan), rendered);
+});
+
+test("CLI Markdown render preserves literal structure for hostile fixture text", () => {
+  const plan = structuredClone(valid);
+  plan.changes[0].summary = "line one\n## injected\n- nested";
+  plan.approvals = ["`code` and [link](https://example.test)"];
+  const result = spawnSync("node", ["bin/connector-dryrun-receipt.js", "render", "-", "--format", "markdown"], {
+    cwd: projectRoot,
+    encoding: "utf8",
+    input: JSON.stringify(plan)
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /line one ## injected - nested/);
+  assert.ok(result.stdout.includes("\\`code\\` and \\[link\\]\\(https://example.test\\)"));
+  assert.doesNotMatch(result.stdout, /\n## injected|\n- nested/);
+});
+
 test("normalizer exposes validation and structured output", () => {
   const output = buildReceipt(valid);
   assert.equal(output.validation.ok, true);

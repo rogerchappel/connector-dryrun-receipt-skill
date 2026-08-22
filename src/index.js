@@ -63,24 +63,33 @@ export function buildReceipt(plan) {
 
 export function renderMarkdown(plan) {
   const receipt = buildReceipt(plan);
-  const lines = [`# Connector Dry-Run Receipt: ${receipt.id || "missing id"}`, "", `- Connector: ${receipt.connector || "missing"}`, `- Action: ${receipt.action || "missing"}`, `- Target: ${receipt.target || "missing"}`, `- Approval mode: ${receipt.approvalMode || "missing"}`, `- Highest risk: ${receipt.highestRisk}`, `- Validation: ${receipt.validation.ok ? "pass" : "fail"}`, "", "## Simulated Changes", ""];
+  const literal = (value) => renderMarkdownLiteral(value);
+  const lines = [`# Connector Dry-Run Receipt: ${literal(receipt.id || "missing id")}`, "", `- Connector: ${literal(receipt.connector || "missing")}`, `- Action: ${literal(receipt.action || "missing")}`, `- Target: ${literal(receipt.target || "missing")}`, `- Approval mode: ${literal(receipt.approvalMode || "missing")}`, `- Highest risk: ${literal(receipt.highestRisk)}`, `- Validation: ${receipt.validation.ok ? "pass" : "fail"}`, "", "## Simulated Changes", ""];
   if (!receipt.changes.length) lines.push("- none recorded");
   for (const change of receipt.changes) {
     const entry = isObject(change) ? change : {};
-    lines.push(`- ${entry.operation || "missing operation"} ${entry.record || "missing record"} (${entry.risk || "medium"}): ${entry.summary || "no summary"}`);
+    lines.push(`- ${literal(entry.operation || "missing operation")} ${literal(entry.record || "missing record")} (${literal(entry.risk || "medium")}): ${literal(entry.summary || "no summary")}`);
   }
   lines.push("", "## Approval Checklist", "");
   if (!receipt.approvals.length) lines.push("- none recorded");
-  for (const item of receipt.approvals) lines.push(`- ${isNonEmptyString(item) ? item : "invalid approval item"}`);
+  for (const item of receipt.approvals) lines.push(`- ${literal(isNonEmptyString(item) ? item : "invalid approval item")}`);
   lines.push("", "## Rollback Notes", "");
   if (!receipt.rollback.length) lines.push("- none recorded");
-  for (const item of receipt.rollback) lines.push(`- ${isNonEmptyString(item) ? item : "invalid rollback item"}`);
+  for (const item of receipt.rollback) lines.push(`- ${literal(isNonEmptyString(item) ? item : "invalid rollback item")}`);
   if (receipt.validation.errors.length || receipt.validation.warnings.length) {
     lines.push("", "## Validation Findings", "");
     for (const error of receipt.validation.errors) lines.push(`- error: ${error}`);
-    for (const warning of receipt.validation.warnings) lines.push(`- warning: ${warning}`);
+    for (const warning of receipt.validation.warnings) lines.push(`- warning: ${literal(warning)}`);
   }
   return `${lines.join("\n")}\n`;
+}
+
+function renderMarkdownLiteral(value) {
+  return String(value)
+    .replace(/[\r\n\u2028\u2029]+/g, " ")
+    .replace(/[\t\f\v ]+/g, " ")
+    .trim()
+    .replace(/([\\`*_[\]{}<>()|])/g, "\\$1");
 }
 
 function findSecretLikeValues(value, path = "$") {
