@@ -19,6 +19,16 @@ its only option is one complete `--format markdown|json` pair after the file.
 Malformed invocations print a stable `Usage error:` message to stderr and exit
 with status 2, distinguishing command-line mistakes from invalid plans.
 
+Markdown output treats every value supplied by the plan as literal text. Line
+breaks and adjacent whitespace are folded to one space, and Markdown punctuation
+is escaped, so fixture headings, lists, links, tables, emphasis, and code spans
+cannot change the receipt structure. This executable example still produces one
+simulated-change list item:
+
+```bash
+printf '%s' '{"id":"demo","connector":"crm","action":"update","target":"lead","approvalMode":"review","changes":[{"operation":"update","record":"lead-1","risk":"low","summary":"first line\\n## not a heading"}]}' | node bin/connector-dryrun-receipt.js render -
+```
+
 Each change must declare `risk` as `low`, `medium`, or `high`. Missing or unknown
 values are validation errors and are normalized to `high` in rendered receipts so
 that `highestRisk` cannot understate uncertainty. A missing, malformed, or empty
